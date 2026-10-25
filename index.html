@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web App Shortcut Maker (PWA Generator)</title>
+  
+  <!-- Tailwind CSS & Lucide Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- JSZip & FileSaver for Zip Generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <style>
+    /* モバイルプレビュー用のスタイル */
+    .phone-mockup {
+      width: 280px;
+      height: 580px;
+      border-radius: 40px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+      border: 10px solid #1f2937;
+      background: linear-gradient(135deg, #1a1e29 0%, #2a324b 100%);
+    }
+    /* コードブロックのカスタムスクロールバー */
+    pre::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    pre::-webkit-scrollbar-thumb {
+      background: #4b5563;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- ヘッダー -->
+    <header class="mb-8 text-center md:text-left">
+      <h1 class="text-3xl font-bold flex items-center justify-center md:justify-start gap-3 text-indigo-400">
+        <i data-lucide="smartphone-charging"></i> PWA Shortcut Generator
+      </h1>
+      <p class="text-slate-400 mt-2">
+        WebサイトのURLと好きなアイコン・名前を設定し、スマホのホーム画面で本物のアプリのように動くPWAを簡単に作成できます。
+      </p>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- 入力フォームエリア (7 cols) -->
+      <div class="lg:col-span-7 space-y-6">
+        
+        <!-- 基本設定カード -->
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg">
+          <h2 class="text-xl font-semibold mb-4 flex items-center gap-2 text-indigo-300">
+            <i data-lucide="sliders"></i> アプリの設定
+          </h2>
+
+          <div class="space-y-4">
+            <!-- URL -->
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-1">転送先 Web サイト URL *</label>
+              <div class="relative">
+                <i data-lucide="link" class="absolute left-3 top-3 w-4 h-4 text-slate-400"></i>
+                <input type="url" id="targetUrl" placeholder="https://example.com" value="https://example.com"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-100">
+              </div>
+            </div>
+
+            <!-- アプリ名 & 略称 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-300 mb-1">アプリ名 (フルネーム)</label>
+                <input type="text" id="appName" placeholder="My Web Application" value="マイウェブアプリ"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-100">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-300 mb-1">ホーム画面の表示名 (短縮名)</label>
+                <input type="text" id="shortName" placeholder="My App" value="マイアプリ" maxLength="12"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-100">
+              </div>
+            </div>
+
+            <!-- テーマカラー & 背景色 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-300 mb-1">テーマカラー (ヘッダー等)</label>
+                <div class="flex gap-2">
+                  <input type="color" id="themeColor" value="#4f46e5" class="h-10 w-12 rounded cursor-pointer border-0 bg-transparent">
+                  <input type="text" id="themeColorText" value="#4f46e5" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-300 mb-1">起動画面の背景色</label>
+                <div class="flex gap-2">
+                  <input type="color" id="bgColor" value="#0f172a" class="h-10 w-12 rounded cursor-pointer border-0 bg-transparent">
+                  <input type="text" id="bgColorText" value="#0f172a" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+                </div>
+              </div>
+            </div>
+
+            <!-- アイコンアップロード -->
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-1">アプリアイコン (画像ファイル)</label>
+              <div class="flex items-center gap-4">
+                <label class="flex-1 border-2 border-dashed border-slate-600 hover:border-indigo-500 rounded-lg p-4 cursor-pointer text-center bg-slate-900/50 transition">
+                  <i data-lucide="upload-cloud" class="mx-auto w-6 h-6 text-slate-400 mb-1"></i>
+                  <span class="text-xs text-slate-400">画像を選択 (PNG, JPG, SVG)</span>
+                  <input type="file" id="iconInput" accept="image/*" class="hidden">
+                </label>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ダウンロードボタン -->
+        <div class="flex gap-4">
+          <button id="downloadZipBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-6 rounded-xl shadow-lg flex items-center justify-center gap-2 transition">
+            <i data-lucide="download"></i> 配布用 Zip ファイルを全生成してダウンロード
+          </button>
+        </div>
+
+        <!-- コード生成・プレビューエリア -->
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold text-indigo-300 flex items-center gap-2">
+              <i data-lucide="code"></i> 生成コードプレビュー
+            </h2>
+            <div class="flex gap-2">
+              <button class="tab-btn bg-indigo-600 text-white px-3 py-1 rounded text-sm font-medium" data-tab="index">index.html</button>
+              <button class="tab-btn bg-slate-700 text-slate-300 px-3 py-1 rounded text-sm font-medium" data-tab="manifest">manifest.json</button>
+              <button class="tab-btn bg-slate-700 text-slate-300 px-3 py-1 rounded text-sm font-medium" data-tab="sw">sw.js</button>
+            </div>
+          </div>
+
+          <!-- コードボックス -->
+          <div class="relative">
+            <pre id="codeView" class="bg-slate-950 p-4 rounded-lg text-xs font-mono text-indigo-200 overflow-x-auto max-h-64"></pre>
+            <button id="copyCodeBtn" class="absolute top-2 right-2 bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded border border-slate-600 text-xs flex items-center gap-1 transition">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i> コピー
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- スマホプレビュー & ガイド (5 cols) -->
+      <div class="lg:col-span-5 space-y-6">
+        
+        <!-- モバイルプレビュー -->
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg flex flex-col items-center">
+          <h2 class="text-lg font-semibold text-slate-300 mb-4 flex items-center gap-2">
+            <i data-lucide="eye"></i> ホーム画面イメージ
+          </h2>
+
+          <div class="phone-mockup relative overflow-hidden flex flex-col items-center p-4">
+            <!-- iPhone Notch -->
+            <div class="w-32 h-5 bg-slate-900 rounded-b-2xl mb-8"></div>
+            
+            <!-- Apps Grid -->
+            <div class="grid grid-cols-4 gap-4 w-full px-2">
+              <!-- Dummy Apps -->
+              <div class="flex flex-col items-center gap-1 opacity-40">
+                <div class="w-12 h-12 bg-slate-700 rounded-xl"></div>
+                <span class="text-[10px] text-slate-400">Mail</span>
+              </div>
+              <div class="flex flex-col items-center gap-1 opacity-40">
+                <div class="w-12 h-12 bg-slate-700 rounded-xl"></div>
+                <span class="text-[10px] text-slate-400">Photos</span>
+              </div>
+              <div class="flex flex-col items-center gap-1 opacity-40">
+                <div class="w-12 h-12 bg-slate-700 rounded-xl"></div>
+                <span class="text-[10px] text-slate-400">Maps</span>
+              </div>
+
+              <!-- Target App Preview (Highlighted) -->
+              <div class="flex flex-col items-center gap-1 scale-110 transition-all">
+                <div id="previewIcon" class="w-12 h-12 bg-indigo-600 rounded-xl shadow-md overflow-hidden flex items-center justify-center text-white font-bold text-lg">
+                  A
+                </div>
+                <span id="previewName" class="text-[10px] text-slate-100 font-medium truncate max-w-[60px] text-center">
+                  マイアプリ
+                </span>
+              </div>
+            </div>
+
+            <!-- Dock -->
+            <div class="absolute bottom-4 left-3 right-3 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-around px-4">
+              <div class="w-10 h-10 bg-slate-700/60 rounded-xl"></div>
+              <div class="w-10 h-10 bg-slate-700/60 rounded-xl"></div>
+              <div class="w-10 h-10 bg-slate-700/60 rounded-xl"></div>
+              <div class="w-10 h-10 bg-slate-700/60 rounded-xl"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 使い方ガイド -->
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg text-sm space-y-3">
+          <h3 class="font-semibold text-indigo-300 flex items-center gap-2 text-base">
+            <i data-lucide="help-circle"></i> Vercel / GitHub での使い方
+          </h3>
+          <ol class="list-decimal list-inside space-y-2 text-slate-300">
+            <li>設定を入力して<span class="text-indigo-400 font-medium">「Zipファイル」</span>をダウンロードします。</li>
+            <li>Zipを解凍し、中身を <strong class="text-white">GitHub リポジトリ</strong> にプッシュするか、<strong class="text-white">Vercel</strong> にドラッグ＆ドロップでデプロイします。</li>
+            <li>スマホの Safari (iOS) または Chrome (Android) でデプロイ後のURLを開きます。</li>
+            <li>
+              <span class="text-slate-100 font-medium">iOS:</span> 共有ボタン → 「ホーム画面に追加」<br>
+              <span class="text-slate-100 font-medium">Android:</span> メニュー → 「アプリをインストール」
+            </li>
+          </ol>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- JavaScript Logic -->
+  <script>
+    lucide.createIcons();
+
+    // DOM 要素
+    const targetUrlEl = document.getElementById('targetUrl');
+    const appNameEl = document.getElementById('appName');
+    const shortNameEl = document.getElementById('shortName');
+    const themeColorEl = document.getElementById('themeColor');
+    const themeColorTextEl = document.getElementById('themeColorText');
+    const bgColorEl = document.getElementById('bgColor');
+    const bgColorTextEl = document.getElementById('bgColorText');
+    const iconInputEl = document.getElementById('iconInput');
+
+    const previewIconEl = document.getElementById('previewIcon');
+    const previewNameEl = document.getElementById('previewName');
+    const codeViewEl = document.getElementById('codeView');
+    const copyCodeBtn = document.getElementById('copyCodeBtn');
+    const downloadZipBtn = document.getElementById('downloadZipBtn');
+
+    let currentTab = 'index';
+    let iconBase64 = null; // カスタムアイコン用データ
+
+    // デフォルトのSVGアイコン（フォールバック用）
+    const defaultIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none"><rect width="512" height="512" rx="128" fill="#4F46E5"/><path d="M256 120L360 360H300L256 250L212 360H152L256 120Z" fill="white"/></svg>`;
+
+    // カラー同期
+    themeColorEl.addEventListener('input', (e) => { themeColorTextEl.value = e.target.value; update(); });
+    themeColorTextEl.addEventListener('input', (e) => { themeColorEl.value = e.target.value; update(); });
+    bgColorEl.addEventListener('input', (e) => { bgColorTextEl.value = e.target.value; update(); });
+    bgColorTextEl.addEventListener('input', (e) => { bgColorEl.value = e.target.value; update(); });
+
+    // 入力監視
+    [targetUrlEl, appNameEl, shortNameEl].forEach(el => el.addEventListener('input', update));
+
+    // アイコン画像読込
+    iconInputEl.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          iconBase64 = evt.target.result;
+          previewIconEl.style.backgroundImage = `url(${iconBase64})`;
+          previewIconEl.style.backgroundSize = 'cover';
+          previewIconEl.innerText = '';
+          update();
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // タブ切替
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.tab-btn').forEach(b => {
+          b.classList.remove('bg-indigo-600', 'text-white');
+          b.classList.add('bg-slate-700', 'text-slate-300');
+        });
+        e.target.classList.remove('bg-slate-700', 'text-slate-300');
+        e.target.classList.add('bg-indigo-600', 'text-white');
+        currentTab = e.target.getAttribute('data-tab');
+        updateCodeView();
+      });
+    });
+
+    // コード生成テンプレート
+    function generateCode() {
+      const url = targetUrlEl.value || 'https://example.com';
+      const name = appNameEl.value || 'My Web App';
+      const shortName = shortNameEl.value || 'My App';
+      const themeColor = themeColorEl.value;
+      const bgColor = bgColorEl.value;
+
+      const manifest = {
+        name: name,
+        short_name: shortName,
+        start_url: "./index.html",
+        display: "standalone",
+        background_color: bgColor,
+        theme_color: themeColor,
+        icons: [
+          {
+            src: "icon.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any maskable"
+          }
+        ]
+      };
+
+      const swCode = `// Service Worker
+self.addEventListener('install', (e) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (e) => {
+  return self.clients.claim();
+});
+
+self.addEventListener('fetch', (e) => {
+  // 直接ネットワーク経由で対象URLへリダイレクト/パススルー
+  return;
+});`;
+
+      const indexHtml = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>${name}</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.png">
+  <meta name="theme-color" content="${themeColor}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <style>
+    body, html {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      overflow: hidden; background-color: ${bgColor};
+    }
+    iframe {
+      width: 100%; height: 100%; border: none; outline: none;
+    }
+  </style>
+</head>
+<body>
+  <iframe src="${url}" allow="geolocation; microphone; camera; midi; encrypted-media"></iframe>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
+    }
+  <\/script>
+</body>
+</html>`;
+
+      return {
+        index: indexHtml,
+        manifest: JSON.stringify(manifest, null, 2),
+        sw: swCode
+      };
+    }
+
+    function updateCodeView() {
+      const codes = generateCode();
+      codeViewEl.textContent = codes[currentTab];
+    }
+
+    function update() {
+      const name = shortNameEl.value || 'マイアプリ';
+      previewNameEl.textContent = name;
+
+      if (!iconBase64) {
+        previewIconEl.style.backgroundColor = themeColorEl.value;
+        previewIconEl.innerText = name.charAt(0).toUpperCase();
+      }
+
+      updateCodeView();
+    }
+
+    // コピー機能
+    copyCodeBtn.addEventListener('click', () => {
+      const codes = generateCode();
+      navigator.clipboard.writeText(codes[currentTab]).then(() => {
+        const origText = copyCodeBtn.innerHTML;
+        copyCodeBtn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 text-green-400"></i> コピー完了`;
+        lucide.createIcons();
+        setTimeout(() => {
+          copyCodeBtn.innerHTML = origText;
+          lucide.createIcons();
+        }, 2000);
+      });
+    });
+
+    // ZIP ダウンロード処理
+    downloadZipBtn.addEventListener('click', async () => {
+      const zip = new JSZip();
+      const codes = generateCode();
+
+      zip.file("index.html", codes.index);
+      zip.file("manifest.json", codes.manifest);
+      zip.file("sw.js", codes.sw);
+
+      // アイコン画像の追加
+      if (iconBase64) {
+        const base64Data = iconBase64.replace(/^data:image\/(png|jpeg|jpg|svg\+xml);base64,/, "");
+        zip.file("icon.png", base64Data, { base64: true });
+      } else {
+        // デフォルトアイコンをキャンバス描画してPNG変換
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = themeColorEl.value;
+        ctx.fillRect(0, 0, 512, 512);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 240px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText((shortNameEl.value || 'A').charAt(0).toUpperCase(), 256, 256);
+        
+        const dataUrl = canvas.toDataURL('image/png');
+        zip.file("icon.png", dataUrl.replace(/^data:image\/png;base64,/, ""), { base64: true });
+      }
+
+      const blob = await zip.generateAsync({ type: "blob" });
+      saveAs(blob, "pwa-shortcut-app.zip");
+    });
+
+    // 初期化
+    update();
+  </script>
+</body>
+</html>
