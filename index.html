@@ -9,12 +9,10 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
 
-  <!-- PWA / 全画面表示メタタグ -->
+  <!-- 全画面表示メタタグ -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0f172a">
-  <link id="dynamicAppleIcon" rel="apple-touch-icon" href="">
-  <link id="dynamicManifest" rel="manifest" href="">
 
   <style>
     body, html {
@@ -29,45 +27,47 @@
 <body class="flex flex-col min-h-screen">
 
   <script>
-    // --- 1. URLパラメータの取得・ランチャー動作 ---
+    // --- 1. パラメータの取得とPWA動的初期化 ---
     const params = new URLSearchParams(window.location.search);
     const targetUrl = params.get('url');
     const titleParam = params.get('title') || 'Web App';
-    const iconParam = params.get('icon');
     const modeParam = params.get('mode') || 'iframe';
+    
+    // セッションストレージまたはパラメータからアイコンを取得（容量オーバー対策）
+    let iconParam = sessionStorage.getItem('pwa_icon_data') || params.get('icon');
 
-    function setupPWA(title, iconUrl) {
-      document.getElementById('pageTitle').innerText = title;
-      const finalIcon = iconUrl || "https://via.placeholder.com/512/4f46e5/ffffff?text=APP";
-      
+    if (targetUrl) {
+      document.title = titleParam;
+
+      // apple-touch-icon の動的追加
+      if (iconParam) {
+        const appleIcon = document.createElement('link');
+        appleIcon.rel = 'apple-touch-icon';
+        appleIcon.href = iconParam;
+        document.head.appendChild(appleIcon);
+      }
+
+      // Manifest の動的追加
       const manifest = {
-        name: title,
-        short_name: title,
+        name: titleParam,
+        short_name: titleParam,
         start_url: window.location.href,
         display: "standalone",
         background_color: "#0f172a",
         theme_color: "#0f172a",
-        icons: [
-          {
-            src: finalIcon,
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "any maskable"
-          }
-        ]
+        icons: [{
+          src: iconParam || "https://via.placeholder.com/192/4f46e5/ffffff?text=APP",
+          sizes: "192x192",
+          type: "image/png"
+        }]
       };
+      const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+      const manifestLink = document.createElement('link');
+      manifestLink.rel = 'manifest';
+      manifestLink.href = URL.createObjectURL(blob);
+      document.head.appendChild(manifestLink);
 
-      const stringManifest = JSON.stringify(manifest);
-      const blob = new Blob([stringManifest], {type: 'application/json'});
-      const manifestUrl = URL.createObjectURL(blob);
-      document.getElementById('dynamicManifest').setAttribute('href', manifestUrl);
-      document.getElementById('dynamicAppleIcon').setAttribute('href', finalIcon);
-    }
-
-    // パラメータが存在する場合：指定サイトを開くモード
-    if (targetUrl) {
-      setupPWA(titleParam, iconParam);
-
+      // ページ読み込み完了時のジャンプ/埋め込み処理
       window.addEventListener('DOMContentLoaded', () => {
         if (modeParam === 'redirect') {
           window.location.href = targetUrl;
@@ -80,7 +80,7 @@
     }
   </script>
 
-  <!-- --- 2. 設定画面（パラメータなし時） --- -->
+  <!-- --- 2. 設定画面（初回アクセス時） --- -->
   <div id="generatorUI" class="max-w-xl mx-auto my-auto p-4 sm:p-6 w-full">
     <header class="text-center mb-6">
       <h1 class="text-2xl font-bold flex items-center justify-center gap-2 text-indigo-400">
@@ -93,33 +93,27 @@
 
     <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl space-y-4">
       
-      <!-- 1. 開きたいURL -->
+      <!-- URL -->
       <div>
         <label class="block text-xs font-semibold text-slate-300 mb-1">1. 開きたい Web サイトの URL *</label>
-        <input type="url" id="inputUrl" placeholder="https://example.com" value="https://example.com"
-          onfocus="if(this.value==='https://example.com') this.value='';" 
-          onblur="if(this.value==='') this.value='https://example.com';"
+        <input type="url" id="inputUrl" placeholder="https://example.com" value=""
           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
       </div>
 
-      <!-- 2. アプリ名 -->
+      <!-- アプリ名 -->
       <div>
         <label class="block text-xs font-semibold text-slate-300 mb-1">2. ホーム画面での表示名（アプリ名） *</label>
-        <input type="text" id="inputTitle" placeholder="マイアプリ" value="マイアプリ"
-          onfocus="if(this.value==='マイアプリ') this.value='';" 
-          onblur="if(this.value==='') this.value='マイアプリ';"
+        <input type="text" id="inputTitle" placeholder="マイアプリ" value=""
           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
       </div>
 
-      <!-- 3. アイコン設定 (タブ切替: 画像 / 絵文字 / URL) -->
+      <!-- アイコン設定 -->
       <div>
         <label class="block text-xs font-semibold text-slate-300 mb-2">3. アイコンの設定</label>
         
-        <!-- アイコン入力タイプ切り替えタブ -->
         <div class="flex bg-slate-900 rounded-lg p-1 border border-slate-700 mb-3">
           <button type="button" class="tab-btn flex-1 py-1 text-xs rounded-md bg-indigo-600 text-white font-medium" data-type="file">📁 スマホの画像</button>
           <button type="button" class="tab-btn flex-1 py-1 text-xs rounded-md text-slate-400 font-medium" data-type="emoji">😀 絵文字 / 文字</button>
-          <button type="button" class="tab-btn flex-1 py-1 text-xs rounded-md text-slate-400 font-medium" data-type="url">🔗 画像URL</button>
         </div>
 
         <!-- A: ファイル選択 -->
@@ -138,17 +132,10 @@
               class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <input type="color" id="inputBgColor" value="#4f46e5" class="w-10 h-9 rounded cursor-pointer border-0 bg-transparent">
           </div>
-          <p class="text-[10px] text-slate-500 mt-1">※文字や絵文字を入力すると自動でアイコン画像を生成します。（隣で背景色を選択）</p>
-        </div>
-
-        <!-- C: 画像URL -->
-        <div id="iconTypeUrl" class="icon-input-panel hidden">
-          <input type="url" id="inputIconUrl" placeholder="https://example.com/icon.png"
-            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
         </div>
       </div>
 
-      <!-- 4. 開き方 -->
+      <!-- 開き方 -->
       <div>
         <label class="block text-xs font-semibold text-slate-300 mb-1">4. 開き方</label>
         <div class="grid grid-cols-2 gap-2 text-xs">
@@ -169,7 +156,6 @@
         </div>
       </div>
 
-      <!-- ボタン -->
       <button id="generateBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2">
         <i data-lucide="sparkles"></i> ショートカットを作成する
       </button>
@@ -178,34 +164,24 @@
     <!-- 結果表示エリア -->
     <div id="resultBox" class="hidden mt-4 bg-slate-800 border border-indigo-500/50 rounded-2xl p-5 shadow-xl space-y-3">
       <h3 class="text-xs font-semibold text-indigo-300 flex items-center gap-1.5">
-        <i data-lucide="check-circle-2"></i> 生成された専用ページへ移動してください
+        <i data-lucide="check-circle-2"></i> 専用ページを作成しました
       </h3>
 
       <button id="openUrlBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 shadow-md">
         <i data-lucide="external-link" class="w-4 h-4"></i> 専用ページを開く
       </button>
-
-      <div class="text-[11px] text-slate-300 space-y-1 bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
-        <p class="font-medium text-slate-100">📱 移動先での操作：</p>
-        <ol class="list-decimal list-inside space-y-0.5 text-slate-400">
-          <li>上記の「専用ページを開く」ボタンを押します。</li>
-          <li>移動先のページで、Safari等の共有メニューから<strong class="text-slate-200">「ホーム画面に追加」</strong>を選択します。</li>
-        </ol>
-      </div>
     </div>
   </div>
 
   <script>
     lucide.createIcons();
 
-    // DOM要素
     const inputUrl = document.getElementById('inputUrl');
     const inputTitle = document.getElementById('inputTitle');
     const inputFile = document.getElementById('inputFile');
     const fileNameText = document.getElementById('fileNameText');
     const inputEmoji = document.getElementById('inputEmoji');
     const inputBgColor = document.getElementById('inputBgColor');
-    const inputIconUrl = document.getElementById('inputIconUrl');
     
     const generateBtn = document.getElementById('generateBtn');
     const resultBox = document.getElementById('resultBox');
@@ -229,72 +205,75 @@
         
         if (currentIconType === 'file') document.getElementById('iconTypeFile').classList.remove('hidden');
         if (currentIconType === 'emoji') document.getElementById('iconTypeEmoji').classList.remove('hidden');
-        if (currentIconType === 'url') document.getElementById('iconTypeUrl').classList.remove('hidden');
       });
     });
 
-    // 画像ファイル読み込み処理
+    // 画像ファイルを自動リサイズ（192x192）して超軽量化
     inputFile.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (file) {
         fileNameText.textContent = file.name;
         const reader = new FileReader();
         reader.onload = (evt) => {
-          uploadedBase64Icon = evt.target.result;
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 192;
+            canvas.height = 192;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, 192, 192);
+            uploadedBase64Icon = canvas.toDataURL('image/png');
+          };
+          img.src = evt.target.result;
         };
         reader.readAsDataURL(file);
       }
     });
 
-    // 絵文字からCanvas画像を作成してDataURL化
+    // 絵文字からキャンバス描画
     function createEmojiIconDataUrl(symbol, bgColor) {
       const canvas = document.createElement('canvas');
-      canvas.width = 512;
-      canvas.height = 512;
+      canvas.width = 192;
+      canvas.height = 192;
       const ctx = canvas.getContext('2d');
-      
-      // 背景色
       ctx.fillStyle = bgColor || '#4f46e5';
-      ctx.fillRect(0, 0, 512, 512);
-
-      // 文字・絵文字描画
+      ctx.fillRect(0, 0, 192, 192);
       ctx.fillStyle = '#ffffff';
-      ctx.font = '260px sans-serif';
+      ctx.font = '100px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(symbol || '📱', 256, 276);
-
+      ctx.fillText(symbol || '📱', 96, 104);
       return canvas.toDataURL('image/png');
     }
 
     // 生成処理
     generateBtn.addEventListener('click', () => {
       const url = inputUrl.value.trim();
-      const title = inputTitle.value.trim() || 'My App';
+      const title = inputTitle.value.trim() || 'マイアプリ';
       const mode = document.querySelector('input[name="inputMode"]:checked').value;
 
-      if (!url || url === 'https://example.com') {
+      if (!url) {
         alert('開きたいサイトのURLを入力してください');
         return;
       }
 
-      // アイコン画像の決定
       let finalIcon = '';
       if (currentIconType === 'file') {
         finalIcon = uploadedBase64Icon;
       } else if (currentIconType === 'emoji') {
         const symbol = inputEmoji.value.trim() || title.charAt(0);
         finalIcon = createEmojiIconDataUrl(symbol, inputBgColor.value);
-      } else if (currentIconType === 'url') {
-        finalIcon = inputIconUrl.value.trim();
       }
 
-      // URLパラメータ構築
+      // セッションストレージに保存（URL長制限回避用）
+      if (finalIcon) {
+        sessionStorage.setItem('pwa_icon_data', finalIcon);
+      }
+
       const baseUrl = window.location.origin + window.location.pathname;
       const finalUrl = new URL(baseUrl);
       finalUrl.searchParams.set('url', url);
       finalUrl.searchParams.set('title', title);
-      if (finalIcon) finalUrl.searchParams.set('icon', finalIcon);
       finalUrl.searchParams.set('mode', mode);
 
       resultBox.classList.remove('hidden');
