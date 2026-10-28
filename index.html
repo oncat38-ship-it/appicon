@@ -207,7 +207,7 @@
     let uploadedBase64Icon = '';
     let generatedEmojiIcon = '';
 
-    // 【さらに調整】サイズを大きくし、iOSでの右寄り現象を打ち消すためoffsetXを「-35px」に拡大
+    // 【大幅補正】iOSでの右寄り現象を強烈に打ち消すため、offsetXを「-70px」に拡大
     function createEmojiIconDataUrl(symbol, bgColor) {
       const canvas = document.createElement('canvas');
       const size = 192;
@@ -221,7 +221,6 @@
       const text = symbol || '📱';
       const charCount = [...text].length;
       
-      // アイコンサイズを大きくするため、ベースのフォントサイズを拡大
       let fontSize = 135;
       if (charCount === 2) fontSize = 100;
       if (charCount >= 3) fontSize = 75;
@@ -231,8 +230,8 @@
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // 左方向へのオフセットを -35px にして中央に補正
-      const offsetX = -35;
+      // 左方向へのオフセットを大きく拡大 (-70px)
+      const offsetX = -70;
       ctx.fillText(text, (size / 2) + offsetX, size / 2 + (fontSize * 0.05));
 
       return canvas.toDataURL('image/png');
