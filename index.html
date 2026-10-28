@@ -207,7 +207,7 @@
     let uploadedBase64Icon = '';
     let generatedEmojiIcon = '';
 
-    // 【大幅補正】iOSでの右寄り現象を強烈に打ち消すため、offsetXを「-70px」に拡大
+    // 【微調整】オフセットを中間値の -50px に設定
     function createEmojiIconDataUrl(symbol, bgColor) {
       const canvas = document.createElement('canvas');
       const size = 192;
@@ -230,8 +230,8 @@
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // 左方向へのオフセットを大きく拡大 (-70px)
-      const offsetX = -70;
+      // 絶妙なバランスの -50px に調整
+      const offsetX = -50;
       ctx.fillText(text, (size / 2) + offsetX, size / 2 + (fontSize * 0.05));
 
       return canvas.toDataURL('image/png');
