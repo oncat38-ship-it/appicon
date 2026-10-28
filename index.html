@@ -33,7 +33,7 @@
     const titleParam = params.get('title') || 'Web App';
     const modeParam = params.get('mode') || 'iframe';
     
-    // セッションストレージまたはパラメータからアイコンを取得（容量オーバー対策）
+    // アイコンデータ取得
     let iconParam = sessionStorage.getItem('pwa_icon_data') || params.get('icon');
 
     if (targetUrl) {
@@ -208,7 +208,7 @@
       });
     });
 
-    // 画像ファイルを自動リサイズ（192x192）して超軽量化
+    // 画像ファイルを自動リサイズ（192x192）
     inputFile.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (file) {
@@ -230,19 +230,34 @@
       }
     });
 
-    // 絵文字からキャンバス描画
+    // 【修正点】絵文字・文字を中心に正確に描画する処理
     function createEmojiIconDataUrl(symbol, bgColor) {
       const canvas = document.createElement('canvas');
-      canvas.width = 192;
-      canvas.height = 192;
+      const size = 192;
+      canvas.width = size;
+      canvas.height = size;
       const ctx = canvas.getContext('2d');
+
+      // 背景色設定
       ctx.fillStyle = bgColor || '#4f46e5';
-      ctx.fillRect(0, 0, 192, 192);
+      ctx.fillRect(0, 0, size, size);
+
+      // 文字数の長さに応じてフォントサイズを動的調整
+      const text = symbol || '📱';
+      const charCount = [...text].length; // 絵文字のサロゲートペア対応カウント
+      let fontSize = 110;
+      if (charCount === 2) fontSize = 85;
+      if (charCount >= 3) fontSize = 65;
+
       ctx.fillStyle = '#ffffff';
-      ctx.font = '100px sans-serif';
+      // 標準絵文字・システムフォントを優先指定
+      ctx.font = `${fontSize}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(symbol || '📱', 96, 104);
+
+      // キャンバスの中心 (96, 96) に正確に描画
+      ctx.fillText(text, size / 2, size / 2 + (fontSize * 0.05)); // 若干のフォント調整オフセット
+
       return canvas.toDataURL('image/png');
     }
 
