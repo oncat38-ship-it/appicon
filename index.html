@@ -33,13 +33,11 @@
     const titleParam = params.get('title') || 'Web App';
     const modeParam = params.get('mode') || 'iframe';
     
-    // アイコンデータ取得
     let iconParam = sessionStorage.getItem('pwa_icon_data') || params.get('icon');
 
     if (targetUrl) {
       document.title = titleParam;
 
-      // apple-touch-icon の動的追加
       if (iconParam) {
         const appleIcon = document.createElement('link');
         appleIcon.rel = 'apple-touch-icon';
@@ -47,7 +45,6 @@
         document.head.appendChild(appleIcon);
       }
 
-      // Manifest の動的追加
       const manifest = {
         name: titleParam,
         short_name: titleParam,
@@ -67,7 +64,6 @@
       manifestLink.href = URL.createObjectURL(blob);
       document.head.appendChild(manifestLink);
 
-      // ページ読み込み完了時のジャンプ/埋め込み処理
       window.addEventListener('DOMContentLoaded', () => {
         if (modeParam === 'redirect') {
           window.location.href = targetUrl;
@@ -93,6 +89,21 @@
 
     <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl space-y-4">
       
+      <!-- リアルタイムプレビュー部 -->
+      <div class="bg-slate-900/80 border border-slate-700/80 rounded-xl p-4 flex items-center gap-4">
+        <div class="flex flex-col items-center">
+          <div id="previewIconBox" class="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-3xl shadow-md overflow-hidden bg-cover bg-center">
+            📱
+          </div>
+          <span class="text-[10px] text-slate-400 mt-1">アイコンプレビュー</span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <span class="text-xs text-indigo-300 font-semibold block">ホーム画面イメージ</span>
+          <p id="previewTitleText" class="text-sm font-bold text-slate-100 truncate mt-0.5">マイアプリ</p>
+          <p id="previewUrlText" class="text-[11px] text-slate-400 truncate mt-0.5">https://example.com</p>
+        </div>
+      </div>
+
       <!-- URL -->
       <div>
         <label class="block text-xs font-semibold text-slate-300 mb-1">1. 開きたい Web サイトの URL *</label>
@@ -132,6 +143,7 @@
               class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <input type="color" id="inputBgColor" value="#4f46e5" class="w-10 h-9 rounded cursor-pointer border-0 bg-transparent">
           </div>
+          <p class="text-[10px] text-slate-500 mt-1">※背景色もリアルタイムでプレビューに反映されます</p>
         </div>
       </div>
 
@@ -183,12 +195,78 @@
     const inputEmoji = document.getElementById('inputEmoji');
     const inputBgColor = document.getElementById('inputBgColor');
     
+    // プレビュー要素
+    const previewIconBox = document.getElementById('previewIconBox');
+    const previewTitleText = document.getElementById('previewTitleText');
+    const previewUrlText = document.getElementById('previewUrlText');
+
     const generateBtn = document.getElementById('generateBtn');
     const resultBox = document.getElementById('resultBox');
     const openUrlBtn = document.getElementById('openUrlBtn');
 
     let currentIconType = 'file';
     let uploadedBase64Icon = '';
+    let generatedEmojiIcon = '';
+
+    // 絵文字アイコン生成ロジック（右寄り対策としてX座標を左へ少しオフセット補正）
+    function createEmojiIconDataUrl(symbol, bgColor) {
+      const canvas = document.createElement('canvas');
+      const size = 192;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = bgColor || '#4f46e5';
+      ctx.fillRect(0, 0, size, size);
+
+      const text = symbol || '📱';
+      const charCount = [...text].length;
+      let fontSize = 110;
+      if (charCount === 2) fontSize = 85;
+      if (charCount >= 3) fontSize = 65;
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `${fontSize}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // 【修正】絵文字フォントの右寄り特性を打ち消すため、X座標を少しだけ左（マイナス側）に補正 (-8px)
+      const offsetX = -8;
+      ctx.fillText(text, (size / 2) + offsetX, size / 2 + (fontSize * 0.05));
+
+      return canvas.toDataURL('image/png');
+    }
+
+    // プレビューのリアルタイム更新関数
+    function updatePreview() {
+      const title = inputTitle.value.trim() || 'マイアプリ';
+      const url = inputUrl.value.trim() || 'https://example.com';
+
+      previewTitleText.textContent = title;
+      previewUrlText.textContent = url;
+
+      if (currentIconType === 'file' && uploadedBase64Icon) {
+        previewIconBox.style.backgroundImage = `url(${uploadedBase64Icon})`;
+        previewIconBox.textContent = '';
+      } else {
+        // 絵文字または未設定時
+        previewIconBox.style.backgroundImage = 'none';
+        const symbol = inputEmoji.value.trim() || title.charAt(0) || '📱';
+        const bgColor = inputBgColor.value;
+        
+        generatedEmojiIcon = createEmojiIconDataUrl(symbol, bgColor);
+        
+        // プレビュー表示用
+        previewIconBox.style.backgroundColor = bgColor;
+        previewIconBox.textContent = symbol;
+      }
+    }
+
+    // 入力イベントリスナーの登録
+    inputUrl.addEventListener('input', updatePreview);
+    inputTitle.addEventListener('input', updatePreview);
+    inputEmoji.addEventListener('input', updatePreview);
+    inputBgColor.addEventListener('input', updatePreview);
 
     // タブ切替
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -205,10 +283,11 @@
         
         if (currentIconType === 'file') document.getElementById('iconTypeFile').classList.remove('hidden');
         if (currentIconType === 'emoji') document.getElementById('iconTypeEmoji').classList.remove('hidden');
+        updatePreview();
       });
     });
 
-    // 画像ファイルを自動リサイズ（192x192）
+    // 画像ファイル読み込み
     inputFile.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (file) {
@@ -223,43 +302,13 @@
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, 192, 192);
             uploadedBase64Icon = canvas.toDataURL('image/png');
+            updatePreview();
           };
           img.src = evt.target.result;
         };
         reader.readAsDataURL(file);
       }
     });
-
-    // 【修正点】絵文字・文字を中心に正確に描画する処理
-    function createEmojiIconDataUrl(symbol, bgColor) {
-      const canvas = document.createElement('canvas');
-      const size = 192;
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext('2d');
-
-      // 背景色設定
-      ctx.fillStyle = bgColor || '#4f46e5';
-      ctx.fillRect(0, 0, size, size);
-
-      // 文字数の長さに応じてフォントサイズを動的調整
-      const text = symbol || '📱';
-      const charCount = [...text].length; // 絵文字のサロゲートペア対応カウント
-      let fontSize = 110;
-      if (charCount === 2) fontSize = 85;
-      if (charCount >= 3) fontSize = 65;
-
-      ctx.fillStyle = '#ffffff';
-      // 標準絵文字・システムフォントを優先指定
-      ctx.font = `${fontSize}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      // キャンバスの中心 (96, 96) に正確に描画
-      ctx.fillText(text, size / 2, size / 2 + (fontSize * 0.05)); // 若干のフォント調整オフセット
-
-      return canvas.toDataURL('image/png');
-    }
 
     // 生成処理
     generateBtn.addEventListener('click', () => {
@@ -280,7 +329,6 @@
         finalIcon = createEmojiIconDataUrl(symbol, inputBgColor.value);
       }
 
-      // セッションストレージに保存（URL長制限回避用）
       if (finalIcon) {
         sessionStorage.setItem('pwa_icon_data', finalIcon);
       }
@@ -297,6 +345,9 @@
         window.location.href = finalUrl.toString();
       };
     });
+
+    // 初期化時プレビュー実行
+    updatePreview();
   </script>
 </body>
 </html>
