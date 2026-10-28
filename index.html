@@ -92,8 +92,11 @@
       <!-- リアルタイムプレビュー部 -->
       <div class="bg-slate-900/80 border border-slate-700/80 rounded-xl p-4 flex items-center gap-4">
         <div class="flex flex-col items-center">
-          <div id="previewIconBox" class="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-3xl shadow-md overflow-hidden bg-cover bg-center">
-            📱
+          <!-- プレビュー用コンテナ：内部要素を絶対配置で動かす -->
+          <div class="w-16 h-16 rounded-2xl bg-indigo-600 relative shadow-md overflow-hidden" id="previewContainer">
+            <div id="previewIconContent" class="absolute inset-0 flex items-center justify-center text-3xl">
+              📱
+            </div>
           </div>
           <span class="text-[10px] text-slate-400 mt-1">アイコンプレビュー</span>
         </div>
@@ -137,13 +140,29 @@
         </div>
 
         <!-- B: 絵文字・一文字 -->
-        <div id="iconTypeEmoji" class="icon-input-panel hidden">
+        <div id="iconTypeEmoji" class="icon-input-panel hidden space-y-3">
           <div class="flex gap-2 items-center">
             <input type="text" id="inputEmoji" placeholder="🚀 や 🎯 など" maxLength="4"
               class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <input type="color" id="inputBgColor" value="#4f46e5" class="w-10 h-9 rounded cursor-pointer border-0 bg-transparent">
           </div>
-          <p class="text-[10px] text-slate-500 mt-1">※背景色もリアルタイムでプレビューに反映されます</p>
+
+          <!-- 位置調整スライダー（絵文字モード時のみ表示） -->
+          <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-700/60 space-y-2">
+            <span class="text-[11px] font-semibold text-indigo-300 block">✨ 絵文字の位置微調整</span>
+            
+            <div class="flex items-center gap-2 text-xs">
+              <span class="w-12 text-slate-400">左右</span>
+              <input type="range" id="rangeOffsetX" min="-50" max="50" value="-35" class="flex-1 accent-indigo-500">
+              <button type="button" id="resetX" class="text-[10px] bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded text-slate-300 border border-slate-700">リセット</button>
+            </div>
+
+            <div class="flex items-center gap-2 text-xs">
+              <span class="w-12 text-slate-400">上下</span>
+              <input type="range" id="rangeOffsetY" min="-50" max="50" value="0" class="flex-1 accent-indigo-500">
+              <button type="button" id="resetY" class="text-[10px] bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded text-slate-300 border border-slate-700">リセット</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -195,7 +214,13 @@
     const inputEmoji = document.getElementById('inputEmoji');
     const inputBgColor = document.getElementById('inputBgColor');
     
-    const previewIconBox = document.getElementById('previewIconBox');
+    const rangeOffsetX = document.getElementById('rangeOffsetX');
+    const rangeOffsetY = document.getElementById('rangeOffsetY');
+    const resetX = document.getElementById('resetX');
+    const resetY = document.getElementById('resetY');
+
+    const previewContainer = document.getElementById('previewContainer');
+    const previewIconContent = document.getElementById('previewIconContent');
     const previewTitleText = document.getElementById('previewTitleText');
     const previewUrlText = document.getElementById('previewUrlText');
 
@@ -205,10 +230,13 @@
 
     let currentIconType = 'file';
     let uploadedBase64Icon = '';
-    let generatedEmojiIcon = '';
 
-    // 【微調整】オフセットを中間値の -50px に設定
-    function createEmojiIconDataUrl(symbol, bgColor) {
+    // リセットボタンの挙動
+    resetX.onclick = () => { rangeOffsetX.value = -35; updatePreview(); };
+    resetY.onclick = () => { rangeOffsetY.value = 0; updatePreview(); };
+
+    // スライダーの値に応じた位置調整付きの絵文字アイコン生成
+    function createEmojiIconDataUrl(symbol, bgColor, offsetXVal, offsetYVal) {
       const canvas = document.createElement('canvas');
       const size = 192;
       canvas.width = size;
@@ -230,9 +258,11 @@
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // 絶妙なバランスの -50px に調整
-      const offsetX = -50;
-      ctx.fillText(text, (size / 2) + offsetX, size / 2 + (fontSize * 0.05));
+      // スライダーの値をピクセル換算（192px基準にスケーリング）して適用
+      const drawX = (size / 2) + (parseInt(offsetXVal) * 1.5);
+      const drawY = (size / 2) + (fontSize * 0.05) + (parseInt(offsetYVal) * 1.5);
+
+      ctx.fillText(text, drawX, drawY);
 
       return canvas.toDataURL('image/png');
     }
@@ -244,25 +274,33 @@
       previewTitleText.textContent = title;
       previewUrlText.textContent = url;
 
+      previewContainer.style.backgroundColor = inputBgColor.value;
+
       if (currentIconType === 'file' && uploadedBase64Icon) {
-        previewIconBox.style.backgroundImage = `url(${uploadedBase64Icon})`;
-        previewIconBox.textContent = '';
+        previewIconContent.style.backgroundImage = `url(${uploadedBase64Icon})`;
+        previewIconContent.style.backgroundSize = 'cover';
+        previewIconContent.style.backgroundPosition = 'center';
+        previewIconContent.textContent = '';
+        previewIconContent.style.transform = 'translate(0px, 0px)';
       } else {
-        previewIconBox.style.backgroundImage = 'none';
+        previewIconContent.style.backgroundImage = 'none';
         const symbol = inputEmoji.value.trim() || title.charAt(0) || '📱';
-        const bgColor = inputBgColor.value;
-        
-        generatedEmojiIcon = createEmojiIconDataUrl(symbol, bgColor);
-        
-        previewIconBox.style.backgroundColor = bgColor;
-        previewIconBox.textContent = symbol;
+        previewIconContent.textContent = symbol;
+
+        // プレビュー画面でもスライダーの移動量をリアルタイム反映
+        const ox = parseInt(rangeOffsetX.value);
+        const oy = parseInt(rangeOffsetY.value);
+        previewIconContent.style.transform = `translate(${ox}px, ${oy}px)`;
       }
     }
 
+    // イベント監視
     inputUrl.addEventListener('input', updatePreview);
     inputTitle.addEventListener('input', updatePreview);
     inputEmoji.addEventListener('input', updatePreview);
     inputBgColor.addEventListener('input', updatePreview);
+    rangeOffsetX.addEventListener('input', updatePreview);
+    rangeOffsetY.addEventListener('input', updatePreview);
 
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -319,7 +357,7 @@
         finalIcon = uploadedBase64Icon;
       } else if (currentIconType === 'emoji') {
         const symbol = inputEmoji.value.trim() || title.charAt(0);
-        finalIcon = createEmojiIconDataUrl(symbol, inputBgColor.value);
+        finalIcon = createEmojiIconDataUrl(symbol, inputBgColor.value, rangeOffsetX.value, rangeOffsetY.value);
       }
 
       if (finalIcon) {
