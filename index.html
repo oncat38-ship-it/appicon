@@ -195,7 +195,6 @@
     const inputEmoji = document.getElementById('inputEmoji');
     const inputBgColor = document.getElementById('inputBgColor');
     
-    // プレビュー要素
     const previewIconBox = document.getElementById('previewIconBox');
     const previewTitleText = document.getElementById('previewTitleText');
     const previewUrlText = document.getElementById('previewUrlText');
@@ -208,7 +207,7 @@
     let uploadedBase64Icon = '';
     let generatedEmojiIcon = '';
 
-    // 絵文字アイコン生成ロジック（右寄り対策としてX座標を左へ少しオフセット補正）
+    // 【大幅改善】iOSでの右寄り現象を完全に打ち消すため、オフセットを「-22px（左方向へ大きく補正）」に変更
     function createEmojiIconDataUrl(symbol, bgColor) {
       const canvas = document.createElement('canvas');
       const size = 192;
@@ -230,14 +229,13 @@
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // 【修正】絵文字フォントの右寄り特性を打ち消すため、X座標を少しだけ左（マイナス側）に補正 (-8px)
-      const offsetX = -8;
+      // iOSで右に寄る現象対策として、X座標をさらに左側へ大幅にオフセット
+      const offsetX = -22;
       ctx.fillText(text, (size / 2) + offsetX, size / 2 + (fontSize * 0.05));
 
       return canvas.toDataURL('image/png');
     }
 
-    // プレビューのリアルタイム更新関数
     function updatePreview() {
       const title = inputTitle.value.trim() || 'マイアプリ';
       const url = inputUrl.value.trim() || 'https://example.com';
@@ -249,26 +247,22 @@
         previewIconBox.style.backgroundImage = `url(${uploadedBase64Icon})`;
         previewIconBox.textContent = '';
       } else {
-        // 絵文字または未設定時
         previewIconBox.style.backgroundImage = 'none';
         const symbol = inputEmoji.value.trim() || title.charAt(0) || '📱';
         const bgColor = inputBgColor.value;
         
         generatedEmojiIcon = createEmojiIconDataUrl(symbol, bgColor);
         
-        // プレビュー表示用
         previewIconBox.style.backgroundColor = bgColor;
         previewIconBox.textContent = symbol;
       }
     }
 
-    // 入力イベントリスナーの登録
     inputUrl.addEventListener('input', updatePreview);
     inputTitle.addEventListener('input', updatePreview);
     inputEmoji.addEventListener('input', updatePreview);
     inputBgColor.addEventListener('input', updatePreview);
 
-    // タブ切替
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         document.querySelectorAll('.tab-btn').forEach(b => {
@@ -287,7 +281,6 @@
       });
     });
 
-    // 画像ファイル読み込み
     inputFile.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (file) {
@@ -310,7 +303,6 @@
       }
     });
 
-    // 生成処理
     generateBtn.addEventListener('click', () => {
       const url = inputUrl.value.trim();
       const title = inputTitle.value.trim() || 'マイアプリ';
@@ -346,7 +338,6 @@
       };
     });
 
-    // 初期化時プレビュー実行
     updatePreview();
   </script>
 </body>
