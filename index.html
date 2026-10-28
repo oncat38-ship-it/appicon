@@ -207,7 +207,7 @@
     let uploadedBase64Icon = '';
     let generatedEmojiIcon = '';
 
-    // 【大幅改善】iOSでの右寄り現象を完全に打ち消すため、オフセットを「-22px（左方向へ大きく補正）」に変更
+    // 【さらに調整】サイズを大きくし、iOSでの右寄り現象を打ち消すためoffsetXを「-35px」に拡大
     function createEmojiIconDataUrl(symbol, bgColor) {
       const canvas = document.createElement('canvas');
       const size = 192;
@@ -220,17 +220,19 @@
 
       const text = symbol || '📱';
       const charCount = [...text].length;
-      let fontSize = 110;
-      if (charCount === 2) fontSize = 85;
-      if (charCount >= 3) fontSize = 65;
+      
+      // アイコンサイズを大きくするため、ベースのフォントサイズを拡大
+      let fontSize = 135;
+      if (charCount === 2) fontSize = 100;
+      if (charCount >= 3) fontSize = 75;
 
       ctx.fillStyle = '#ffffff';
       ctx.font = `${fontSize}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // iOSで右に寄る現象対策として、X座標をさらに左側へ大幅にオフセット
-      const offsetX = -22;
+      // 左方向へのオフセットを -35px にして中央に補正
+      const offsetX = -35;
       ctx.fillText(text, (size / 2) + offsetX, size / 2 + (fontSize * 0.05));
 
       return canvas.toDataURL('image/png');
